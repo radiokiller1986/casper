@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+title: >-
+  CASPER: Causality, Severity & Preventability Evaluation for Research
+message: >-
+  If you use this software in your research, please cite it
+  using the metadata in this file.
+type: software
+authors:
+  - given-names: Puneet
+    family-names: Paliwal
+    # orcid: 'https://orcid.org/0000-0000-0000-0000'   # add your ORCID
+    # email: puneetpaliwal23@gmail.com                 # uncomment to publish
+abstract: >-
+  CASPER is an open-source tool for automated, batch assessment of
+  adverse drug reactions (ADRs). From single records or uploaded
+  datasets (CSV/Excel), it generates causality (Naranjo, WHO-UMC),
+  severity (Modified Hartwig & Siegel), and preventability
+  (Modified Schumock & Thornton) assessments, with per-case and
+  aggregate research-oriented reports.
+keywords:
+  - pharmacovigilance
+  - adverse drug reaction
+  - causality assessment
+  - Naranjo algorithm
+  - WHO-UMC
+  - severity assessment
+  - preventability assessment
+  - drug safety
+license: Apache-2.0
+version: 0.1.0
+date-released: '2026-06-11'
+# repository-code: 'https://github.com/radiokiller1986/casper'   # add repo URL
+# url: 'https://github.com/radiokiller1986/casper'                # add project URL
+# doi: '10.5281/zenodo.XXXXXXX'                                   # add Zenodo DOI after first release
