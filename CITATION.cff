@@ -27,8 +27,8 @@ keywords:
   - preventability assessment
   - drug safety
 license: Apache-2.0
-version: 0.1.0
+version: 0.2.0
 date-released: '2026-06-11'
-# repository-code: 'https://github.com/radiokiller1986/casper'   # add repo URL
-# url: 'https://github.com/radiokiller1986/casper'                # add project URL
-# doi: '10.5281/zenodo.XXXXXXX'                                   # add Zenodo DOI after first release
+repository-code: 'https://github.com/radiokiller1986/casper'
+url: 'https://github.com/radiokiller1986/casper'
+doi: '10.5281/zenodo.20646452'

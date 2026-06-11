@@ -18,7 +18,7 @@ Usage:
 
 Author: Puneet Paliwal. Licensed under Apache-2.0.
 """
-import sys, os, re
+import sys, os, re, hashlib, datetime
 import pandas as pd
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -26,8 +26,8 @@ from openpyxl.utils import get_column_letter
 from openpyxl.chart import BarChart, Reference
 
 NAVY="1F3864"; BLUE="2E5496"; GREEN="C6E0B4"; AMBER="FFE699"; RED="F4B6B6"; GREY="F2F2F2"
-CASPER_VERSION="0.1.0"
-CASPER_DOI="10.5281/zenodo.XXXXXXX"   # replace with your Zenodo DOI after first release
+CASPER_VERSION="0.2.0"
+CASPER_DOI="10.5281/zenodo.20646452"   # replace with your Zenodo DOI after first release
 CASPER_URL="https://github.com/radiokiller1986/casper"
 CASPER_CITATION=(f"Paliwal P. CASPER: Causality, Severity & Preventability Evaluation for Research "
                  f"(v{CASPER_VERSION}). 2026. DOI: {CASPER_DOI}. {CASPER_URL}")
@@ -68,7 +68,8 @@ PASS_THROUGH={"case_id","patient_id","age_years","sex","weight_kg","comorbiditie
  "s_treatment_change","s_antidote_required","s_caused_admission","s_increased_los","s_los_days","s_intensive_care",
  "s_permanent_harm","s_contributed_death",
  "p_a1_allergy_history","p_a2_drug_inappropriate","p_a3_dose_inappropriate","p_a4_toxic_level","p_a5_known_treatment",
- "p_b1_monitoring_missed","p_b2_interaction","p_b3_poor_compliance","p_b4_preventive_missed"}
+ "p_b1_monitoring_missed","p_b2_interaction","p_b3_poor_compliance","p_b4_preventive_missed",
+ "seriousness","e2a_life_threatening","e2a_congenital_anomaly","e2a_important_medical_event"}
 
 def _norm(h):
     h=str(h).strip().lower()
@@ -197,84 +198,97 @@ def g(row, key, default=""):
 
 # ---------------- NARANJO ----------------
 def naranjo(row):
-    miss=[]; s=0; known=0
-    def kn(val, *ok):
-        return 1 if val in ok else 0
-    v=g(row,"c_prev_reports");      s+= 1 if v=="Yes" else 0;  known+=kn(v,"Yes","No")
+    miss=[]; s=0; known=0; detail=[]
+    def kn(val,*ok): return 1 if val in ok else 0
+    def add(label,val,pts):
+        nonlocal s; s+=pts; detail.append(f"{label}={val or '?'} ({pts:+d})")
+    v=g(row,"c_prev_reports"); add("prev-reports",v, 1 if v=="Yes" else 0); known+=kn(v,"Yes","No")
     v=g(row,"c_temporal")
-    if v in ("Plausible","Reasonable"): s+=2
-    elif v in ("Improbable","None"): s+=-1
-    else: miss.append("c_temporal")
-    known+=kn(v,"Plausible","Reasonable","Improbable","None")
-    v=g(row,"c_dechallenge")
-    if v=="Improved": s+=1
-    elif v=="": miss.append("c_dechallenge")
-    known+=kn(v,"Improved","No change","Worsened")
-    v=g(row,"c_rechallenge")
-    if v=="Reaction recurred": s+=2
-    elif v=="No recurrence": s+=-1
-    known+=kn(v,"Reaction recurred","No recurrence")
+    p = 2 if v in ("Plausible","Reasonable") else (-1 if v in ("Improbable","None") else 0)
+    if v not in ("Plausible","Reasonable","Improbable","None"): miss.append("c_temporal")
+    add("temporal",v,p); known+=kn(v,"Plausible","Reasonable","Improbable","None")
+    v=g(row,"c_dechallenge"); p=1 if v=="Improved" else 0
+    if v=="": miss.append("c_dechallenge")
+    add("dechallenge",v,p); known+=kn(v,"Improved","No change","Worsened")
+    v=g(row,"c_rechallenge"); p=2 if v=="Reaction recurred" else (-1 if v=="No recurrence" else 0)
+    add("rechallenge",v,p); known+=kn(v,"Reaction recurred","No recurrence")
     v=g(row,"c_alt_causes")
-    if v=="Absent": s+=2
-    elif v in ("Present","Possible"): s+=-1
-    elif v=="": miss.append("c_alt_causes")
-    known+=kn(v,"Absent","Present","Possible")
-    v=g(row,"c_placebo")
-    if v=="Reaction present": s+=-1
-    elif v=="Reaction absent": s+=1
-    known+=kn(v,"Reaction present","Reaction absent")
-    v=g(row,"c_toxic_level");     s+= 1 if v=="Yes" else 0; known+=kn(v,"Yes","No")
-    v=g(row,"c_dose_response");   s+= 1 if v=="Yes" else 0; known+=kn(v,"Yes","No")
-    v=g(row,"c_prior_exposure");  s+= 1 if v=="Yes" else 0; known+=kn(v,"Yes","No")
-    v=g(row,"c_objective_confirm");s+= 1 if v=="Yes" else 0; known+=kn(v,"Yes","No")
+    p = 2 if v=="Absent" else (-1 if v in ("Present","Possible") else 0)
+    if v=="": miss.append("c_alt_causes")
+    add("alt-causes",v,p); known+=kn(v,"Absent","Present","Possible")
+    v=g(row,"c_placebo"); p=-1 if v=="Reaction present" else (1 if v=="Reaction absent" else 0)
+    add("placebo",v,p); known+=kn(v,"Reaction present","Reaction absent")
+    v=g(row,"c_toxic_level"); add("toxic-level",v,1 if v=="Yes" else 0); known+=kn(v,"Yes","No")
+    v=g(row,"c_dose_response"); add("dose-response",v,1 if v=="Yes" else 0); known+=kn(v,"Yes","No")
+    v=g(row,"c_prior_exposure"); add("prior-exposure",v,1 if v=="Yes" else 0); known+=kn(v,"Yes","No")
+    v=g(row,"c_objective_confirm"); add("objective",v,1 if v=="Yes" else 0); known+=kn(v,"Yes","No")
     cat="Definite" if s>=9 else "Probable" if s>=5 else "Possible" if s>=1 else "Doubtful"
-    return s, cat, miss, known
+    return s, cat, miss, known, detail
 
 # ---------------- WHO-UMC ----------------
 def whoumc(row):
-    # Faithful to WHO-UMC official criteria (who.int causality-assessment).
-    # Possible (the most frequent category) explicitly covers reasonable time +
-    # alternative cause possible AND/OR withdrawal information lacking/unclear.
-    # Conditional is reserved for when the time relationship itself is unknown.
-    t=g(row,"c_temporal"); alt=g(row,"c_alt_causes")
-    de=g(row,"c_dechallenge"); defin=g(row,"c_event_definitive")
-    if t=="":      return "Conditional / Unclassified"   # need temporal info to assess
-    if t=="None":  return "Unassessable / Unclassifiable"
-    if t=="Improbable": return "Unlikely"
-    # time relationship plausible/reasonable -> Certain / Probable / Possible
-    # Certain REQUIRES the definitive-event criterion (4th WHO criterion) + plausible time
+    # Faithful to the official WHO-UMC criteria (who.int). Returns (category, rationale).
+    t=g(row,"c_temporal"); alt=g(row,"c_alt_causes"); de=g(row,"c_dechallenge"); defin=g(row,"c_event_definitive")
+    if t=="":      return "Conditional / Unclassified","time relationship unknown - more data needed"
+    if t=="None":  return "Unassessable / Unclassifiable","no temporal relationship"
+    if t=="Improbable": return "Unlikely","time to onset makes relationship improbable"
     if t=="Plausible" and alt=="Absent" and de=="Improved" and defin=="Yes":
-        return "Certain"
-    # Probable: reasonable time, alt unlikely (Absent), withdrawal response reasonable (Improved)
+        return "Certain","plausible time + no alternative cause + positive dechallenge + definitive event"
     if alt=="Absent" and de=="Improved":
-        return "Probable / Likely"
-    # otherwise Possible (alt could explain, and/or withdrawal info lacking/unclear)
-    return "Possible"
+        return "Probable / Likely","reasonable time + alternative cause unlikely + reasonable dechallenge"
+    return "Possible", f"reasonable time; alt-cause={alt or 'unknown'}, dechallenge={de or 'unknown/none'}"
 
 # ---------------- HARTWIG & SIEGEL ----------------
 def hartwig(row):
     keys=["s_contributed_death","s_permanent_harm","s_intensive_care","s_caused_admission",
           "s_increased_los","s_antidote_required","s_treatment_change"]
-    known=[k for k in keys if g(row,k)!=""]
-    miss=[] if known else ["severity inputs"]
+    miss=[] if [k for k in keys if g(row,k)!=""] else ["severity inputs"]
     def y(k): return g(row,k)=="Yes"
-    if y("s_contributed_death"): return 7,"Severe",miss
-    if y("s_permanent_harm"): return 6,"Severe",miss
-    if y("s_intensive_care"): return 5,"Severe",miss
-    if y("s_caused_admission") or y("s_increased_los"): return 4,"Moderate",miss
-    if y("s_antidote_required"): return 3,"Moderate",miss
-    if g(row,"s_treatment_change")=="Drug held-stopped-changed": return 2,"Mild",miss
-    return 1,"Mild",miss
+    if y("s_contributed_death"): return 7,"Severe",miss,"L7: reaction led to death"
+    if y("s_permanent_harm"): return 6,"Severe",miss,"L6: permanent harm"
+    if y("s_intensive_care"): return 5,"Severe",miss,"L5: required intensive care"
+    if y("s_caused_admission") or y("s_increased_los"): return 4,"Moderate",miss,"L4: caused admission / prolonged stay"
+    if y("s_antidote_required"): return 3,"Moderate",miss,"L3: antidote/treatment required"
+    if g(row,"s_treatment_change")=="Drug held-stopped-changed": return 2,"Mild",miss,"L2: suspected drug held/changed"
+    return 1,"Mild",miss,"L1: no change in treatment required"
 
 # ---------------- SCHUMOCK & THORNTON ----------------
 def preventability(row):
     A=["p_a1_allergy_history","p_a2_drug_inappropriate","p_a3_dose_inappropriate","p_a4_toxic_level","p_a5_known_treatment"]
     B=["p_b1_monitoring_missed","p_b2_interaction","p_b3_poor_compliance","p_b4_preventive_missed"]
-    filled=[k for k in A+B if g(row,k)!=""]
-    miss=[] if filled else ["preventability inputs"]
-    if any(g(row,k)=="Yes" for k in A): return "Definitely preventable", miss
-    if any(g(row,k)=="Yes" for k in B): return "Probably preventable", miss
-    return "Not preventable", miss
+    miss=[] if [k for k in A+B if g(row,k)!=""] else ["preventability inputs"]
+    ay=[k.replace("p_a","A").split("_")[0] for k in A if g(row,k)=="Yes"]
+    by=[k.replace("p_b","B").split("_")[0] for k in B if g(row,k)=="Yes"]
+    if ay: return "Definitely preventable", miss, "Section A criteria met: "+", ".join(ay)
+    if by: return "Probably preventable", miss, "Section B criteria met: "+", ".join(by)
+    return "Not preventable", miss, "no preventability criterion met"
+
+# ---------------- ICH E2A SERIOUSNESS ----------------
+def ich_e2a(row):
+    # ICH E2A: an event is SERIOUS if it meets ANY of 6 criteria. Seriousness (regulatory,
+    # binary) is distinct from severity (Hartwig intensity). Returns (label, criteria-met).
+    crit=[]
+    out=g(row,"adr_outcome").lower(); dh=g(row,"death_hosp").lower(); lt=g(row,"lifethreat_disab").lower()
+    desc=g(row,"adr_description").lower()
+    if g(row,"s_contributed_death")=="Yes" or _contains(out,"fatal","death","died") or _contains(dh,"death","died","fatal"):
+        crit.append("Death")
+    if _contains(lt,"life") or g(row,"e2a_life_threatening").lower()=="yes" or _contains(out,"life threat"):
+        crit.append("Life-threatening")
+    if _contains(dh,"hosp","admit","admission","prolong") or g(row,"s_caused_admission")=="Yes" or g(row,"s_increased_los")=="Yes":
+        crit.append("Hospitalisation / prolongation")
+    if _contains(lt,"disab") or g(row,"s_permanent_harm")=="Yes" or _contains(out,"sequelae"):
+        crit.append("Persistent / significant disability")
+    if _contains(desc,"congenital","birth defect","anomaly") or g(row,"e2a_congenital_anomaly").lower()=="yes":
+        crit.append("Congenital anomaly / birth defect")
+    if g(row,"e2a_important_medical_event").lower()=="yes":
+        crit.append("Important medical event")
+    if crit:
+        return "Serious", "; ".join(crit)
+    if g(row,"seriousness").lower().startswith("yes"):
+        return "Serious", "marked serious (specific criterion not recorded)"
+    if g(row,"seriousness").lower().startswith("no") or out or dh or lt:
+        return "Non-serious", "no ICH E2A seriousness criterion met"
+    return "", "not assessable (no seriousness data)"
 
 # ---------------- LOAD / SCORE / REPORT ----------------
 def load_rows(path):
@@ -296,8 +310,13 @@ def load_rows(path):
 
 def score(df):
     out=[]
+    ts=datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     for _,row in df.iterrows():
-        ns,nc,nm,nknown=naranjo(row); who=whoumc(row); hl,hg,hm=hartwig(row); pv,pm=preventability(row)
+        ns,nc,nm,nknown,ndetail=naranjo(row)
+        who,whoreason=whoumc(row)
+        hl,hg,hm,hreason=hartwig(row)
+        pv,pm,preason=preventability(row)
+        ser,sercrit=ich_e2a(row)
         flags=[]
         if nm or who=="Conditional / Unclassified": flags.append("causality")
         if nknown<5: flags.append(f"causality low-data ({nknown}/10 Naranjo items known)")
@@ -305,15 +324,23 @@ def score(df):
         if pm: flags.append("preventability")
         integ=g(row,"data_integrity")
         if integ: flags.append("DATA INTEGRITY: "+integ)
-        out.append({
+        rec={
             "case_id":g(row,"case_id"),"patient_id":g(row,"patient_id"),
             "suspected_drug":g(row,"suspected_drug"),"adr_description":g(row,"adr_description"),
             "Naranjo score":ns,"Naranjo causality":nc,"Naranjo items known":f"{nknown}/10",
-            "WHO-UMC causality":who,
-            "Hartwig level":hl,"Severity grade":hg,"Preventability":pv,
+            "Naranjo breakdown":"; ".join(ndetail),
+            "WHO-UMC causality":who,"WHO-UMC basis":whoreason,
+            "Hartwig level":hl,"Severity grade":hg,"Severity basis":hreason,
+            "Preventability":pv,"Preventability basis":preason,
+            "Seriousness (ICH E2A)":ser,"Serious criteria":sercrit,
             "Data flags":"; ".join(flags) if flags else "complete",
             "Missing/assumed fields":"; ".join(sorted(set(nm+hm+pm))),
-        })
+            "Assessed (UTC)":ts,
+        }
+        canon="|".join([rec["case_id"],rec["suspected_drug"],g(row,"adr_description"),
+                        str(ns),nc,who,str(hl),hg,pv,ser,ts,CASPER_VERSION])
+        rec["Row SHA-256"]=hashlib.sha256(canon.encode("utf-8")).hexdigest()
+        out.append(rec)
     return pd.DataFrame(out)
 
 def write_report(res, out_path):
@@ -329,10 +356,17 @@ def write_report(res, out_path):
             cell.alignment=Alignment(vertical="center",wrap_text=True)
             if c=="Severity grade":
                 cell.fill=PatternFill("solid",fgColor={"Mild":GREEN,"Moderate":AMBER,"Severe":RED}.get(r[c],"FFFFFF"))
+            if c=="Seriousness (ICH E2A)" and r[c]=="Serious":
+                cell.fill=PatternFill("solid",fgColor=RED)
             if c=="Data flags" and r[c]!="complete":
                 cell.fill=PatternFill("solid",fgColor=AMBER)
-    for j,w in enumerate([12,11,16,28,11,15,13,18,9,12,20,14,34][:len(cols)],1):
-        ws.column_dimensions[get_column_letter(j)].width=w
+    widthmap={"case_id":12,"patient_id":11,"suspected_drug":16,"adr_description":26,
+        "Naranjo score":9,"Naranjo causality":14,"Naranjo items known":10,"Naranjo breakdown":46,
+        "WHO-UMC causality":18,"WHO-UMC basis":40,"Hartwig level":8,"Severity grade":11,"Severity basis":30,
+        "Preventability":18,"Preventability basis":30,"Seriousness (ICH E2A)":15,"Serious criteria":34,
+        "Data flags":22,"Missing/assumed fields":28,"Assessed (UTC)":18,"Row SHA-256":30}
+    for j,c in enumerate(cols,1):
+        ws.column_dimensions[get_column_letter(j)].width=widthmap.get(c,16)
     ws.freeze_panes="A2"; ws.row_dimensions[1].height=40
 
     sm=wb.create_sheet("Summary")
@@ -380,6 +414,13 @@ def write_report(res, out_path):
     cs["A5"].font=Font(name=F,size=10,color="555555")
     cs["A7"]="Tool output is a research/decision-support aid; it does not replace clinical judgement."
     cs["A7"].font=Font(name=F,italic=True,size=10,color="555555")
+    cs["A9"]="Audit & integrity"; cs["A9"].font=Font(name=F,bold=True,size=11,color=NAVY)
+    cs["A10"]=("Each row carries an 'Assessed (UTC)' timestamp and a 'Row SHA-256' tamper-evidence hash "
+               "computed over case id + drug + reaction + all scale outputs + timestamp + tool version. "
+               "Re-hashing a row after any manual edit will not match the stored hash, revealing changes.")
+    cs["A10"].font=Font(name=F,size=10,color="555555"); cs["A10"].alignment=Alignment(wrap_text=True)
+    cs["A12"]="Scales: Naranjo + WHO-UMC (causality), Hartwig & Siegel (severity), Schumock & Thornton (preventability), ICH E2A (seriousness)."
+    cs["A12"].font=Font(name=F,size=10,color="555555")
     cs.column_dimensions["A"].width=110
     # stamp a citation footer two rows under the per-case table
     last=ws.max_row+2
@@ -393,7 +434,7 @@ def main():
     out=sys.argv[2] if len(sys.argv)>2 else os.path.splitext(inp)[0].replace("_template","").replace("_upload","")+"_RESULTS.xlsx"
     df=load_rows(inp); res=score(df); write_report(res,out)
     print(f"Scored {len(res)} case(s).  ->  {out}")
-    print(res[["case_id","Naranjo causality","WHO-UMC causality","Severity grade","Preventability","Data flags"]].to_string(index=False))
+    print(res[["case_id","Naranjo causality","WHO-UMC causality","Severity grade","Preventability","Seriousness (ICH E2A)","Data flags"]].to_string(index=False))
 
 if __name__=="__main__":
     main()

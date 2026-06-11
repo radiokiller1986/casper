@@ -2,7 +2,7 @@
 
 **Title:** Agreement between an automated multi-scale ADR assessment tool (CASPER) and expert consensus for causality, severity and preventability assessment of adverse drug reactions: a reliability and agreement study.
 
-**Tool version under test:** CASPER v0.1.0 (scoring ruleset frozen; commit/DOI to be cited).
+**Tool version under test:** CASPER v0.2.0 (scoring ruleset frozen; commit/DOI to be cited).
 **Protocol version / date:** v1.0 — to be finalised before data collection.
 **Author:** Puneet Paliwal.
 
@@ -112,3 +112,15 @@ Ethics approval → assessor training and calibration on pilot cases → data ex
 - Donner A, Eliasziw M. A goodness-of-fit approach to inference procedures for the kappa statistic. *Stat Med* 1992.
 - Kottner J et al. Guidelines for Reporting Reliability and Agreement Studies (GRRAS). *J Clin Epidemiol* 2011.
 - Bujang MA, Baharum N. Guidelines of the minimum sample size requirements for Cohen's kappa. *Epidemiol Biostat Public Health* 2017.
+
+---
+
+## Addendum (v0.2) — efficiency, usability, and the equivalence framing
+
+Reviewers of v0.2 asked for more than agreement statistics. The validation study should therefore report three co-primary/secondary endpoints:
+
+1. **Agreement / equivalence (primary).** CASPER vs blinded expert consensus, per scale, by weighted Cohen's κ with 95% CI, against the pre-specified acceptance threshold (lower bound ≥ 0.60). Frame it as an *equivalence* question — CASPER should agree with experts about as well as experts agree with each other (report the experts' inter-rater κ as the ceiling). Now includes **ICH E2A seriousness** (Serious/Non-serious) as a fifth endpoint.
+2. **Efficiency / throughput (secondary).** Record time-to-completion per case, CASPER-assisted vs fully manual, on a random subset; compare with a paired test (paired t-test or Wilcoxon signed-rank). Hypothesis: CASPER significantly reduces time and cognitive load.
+3. **Usability (secondary).** Administer the **System Usability Scale (SUS)** to ≥ 30 prospective users (PV officers, clinical-pharmacology residents, physicians). Target mean SUS > 72.5 (Good/Excellent). Report mean ± SD and the adjective rating.
+
+**Transparency & integrity for reproducibility.** Each CASPER output row now carries a per-rule score breakdown, an assessment timestamp, and a SHA-256 hash over (case + drug + reaction + outputs + timestamp + version). Archive the frozen tool version (DOI), the anonymised dataset, and the analysis code so the κ values can be independently reproduced. Note explicitly in the limitations that CASPER is **not** a 21 CFR Part 11 / GAMP 5 validated system; the hash provides tamper-evidence, not regulated electronic-records compliance.

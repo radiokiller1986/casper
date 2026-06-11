@@ -3,8 +3,7 @@
 **Causality, Severity & Preventability Evaluation for Research**
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.XXXXXXX-blue.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
-<!-- Replace the DOI badge above with the real Zenodo DOI after your first release. -->
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20646452-blue.svg)](https://doi.org/10.5281/zenodo.20646452)
 
 **▶ Live tool (no install):** `https://radiokiller1986.github.io/casper/`
 
@@ -13,9 +12,14 @@ CASPER is an open-source tool for automated assessment of adverse drug reactions
 - **Causality:** Naranjo algorithm, WHO-UMC scale (implementation verified against the official WHO-UMC criteria)
 - **Severity:** Modified Hartwig & Siegel scale
 - **Preventability:** Modified Schumock & Thornton criteria
+- **Seriousness:** ICH E2A criteria (Serious / Non-serious) — distinct from severity
 - **Batch mode:** assess whole research cohorts at once
 - **Browser app:** `CASPER.html` runs fully offline — open it in any browser, no install, no server, no data leaves the device
-- **Outputs:** per-case scores, items-known transparency, data-integrity flags, aggregate tables, charts, exportable reports (every export carries the citation)
+- **Transparency:** per-rule breakdown for every score (Naranjo item-by-item, WHO-UMC/severity rationale)
+- **Integrity:** each result row carries an audit timestamp + SHA-256 tamper-evidence hash
+- **Offline PWA:** installable from the Pages link; works with no network
+- **MedDRA helper (optional):** load your own licensed MedDRA dictionary locally (not bundled — MedDRA is ICH/MSSO-licensed)
+- **Outputs:** aggregate tables, charts, exportable reports (every export carries the citation)
 
 > ⚠️ CASPER is a research and decision-support tool. It does not replace clinical judgment or formal regulatory assessment. Outputs depend on input completeness; the tool flags what it cannot determine rather than guessing.
 
@@ -46,4 +50,4 @@ CASPER is an open-source tool for automated assessment of adverse drug reactions
 
 If you use CASPER in research, teaching, or any published work, please cite it. This is the only thing the author asks in return for free use.
 
-> Paliwal, P. (2026). *CASPER: Causality, Severity & Preventability Evaluation for Research* (Version 0.1.0) [Computer software]. https://github.com
+> Paliwal, P. (2026). *CASPER: Causality, Severity & Preventability Evaluation for Research* (Version 0.2.0) [Computer software]. https://github.com

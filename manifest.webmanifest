@@ -1,0 +1,13 @@
+{
+  "name": "CASPER — ADR Causality, Severity, Preventability & Seriousness",
+  "short_name": "CASPER",
+  "description": "Offline tool to score adverse drug reactions against Naranjo, WHO-UMC, Hartwig-Siegel, Schumock-Thornton and ICH E2A.",
+  "start_url": "./CASPER.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ece9e1",
+  "theme_color": "#2f6fb6",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
